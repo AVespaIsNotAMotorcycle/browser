@@ -60,14 +60,29 @@ def https_scheme(host, path):
     s = ctx.wrap_socket(s, server_hostname=host)
     return socket_connection(s, host, port, path)
 
-def request(url):
+def data_scheme(path):
+    headers = {}
+    body = path
+    if path[:6] == "/html,":
+        body = path[6:]
+    return headers, body
+
+def parse_scheme_and_url(url):
+    if url[:5] == "data:":
+        return url[:4], url[5:]
     scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https", "file"], \
+    return scheme, url
+
+def request(url):
+    scheme, url = parse_scheme_and_url(url)
+    assert scheme in ["http", "https", "file", "data"], \
         "Unknown scheme {}".format(scheme)
     host, path = url.split("/", 1)
     path = "/" + path
     if scheme == "file":
         return file_scheme(path)
+    if scheme == "data":
+        return data_scheme(path)
     if scheme == "http":
         return http_scheme(host, path)
     if scheme == "https":
