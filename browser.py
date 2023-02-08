@@ -21,8 +21,10 @@ def request(url):
         s = ctx.wrap_socket(s, server_hostname=host)
 
     s.connect((host, port))
-    s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8") +
-           "Host: {}\r\n\r\n".format(host).encode("utf8"))
+    s.send("GET {} HTTP/1.1\r\n".format(path).encode("utf8") +
+           "Host: {}\r\n".format(host).encode("utf8") +
+           "Connection: {}\r\n".format("close").encode("utf8") +
+           "User-Agent: {}\r\n\r\n".format("avinam").encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
     statusline = response.readline()
     version, status, explanation = statusline.split(" ", 2)
