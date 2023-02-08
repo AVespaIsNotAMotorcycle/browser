@@ -1,7 +1,6 @@
 def file_scheme(path):
     import os
     headers = {}
-    print(path)
     body = open(path).read()
     return headers, body
 
@@ -88,11 +87,11 @@ def request(url):
     if scheme == "https":
         return https_scheme(host, path)
 
-def show(body):
+def render_html(html):
     in_angle = False
     tag_name = ""
     in_body = False
-    for c in body:
+    for c in html:
         if c == "<":
             in_angle = True
         elif c == ">":
@@ -103,10 +102,16 @@ def show(body):
                 in_body = False
             tag_name = ""
         elif not in_angle:
-            if (in_body):
+            if in_body:
                 print(c, end="")
         elif c != "\n":
             tag_name += c
+
+def show(body):
+    if body.find("<html") != -1:
+        print(render_html(body))
+        return
+    print(body)
 
 def load(url):
     headers, body = request(url)
