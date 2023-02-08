@@ -89,14 +89,24 @@ def request(url):
         return https_scheme(host, path)
 
 def show(body):
-  in_angle = False
-  for c in body:
-      if c == "<":
-          in_angle = True
-      elif c == ">":
-          in_angle = False
-      elif not in_angle:
-          print(c, end="")
+    in_angle = False
+    tag_name = ""
+    in_body = False
+    for c in body:
+        if c == "<":
+            in_angle = True
+        elif c == ">":
+            in_angle = False
+            if tag_name == "body":
+                in_body = True
+            if tag_name == "/body":
+                in_body = False
+            tag_name = ""
+        elif not in_angle:
+            if (in_body):
+                print(c, end="")
+        elif c != "\n":
+            tag_name += c
 
 def load(url):
     headers, body = request(url)
