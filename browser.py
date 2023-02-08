@@ -91,6 +91,7 @@ def render_html(html):
     in_angle = False
     tag_name = ""
     in_body = False
+    text = ""
     for c in html:
         if c == "<":
             in_angle = True
@@ -103,9 +104,14 @@ def render_html(html):
             tag_name = ""
         elif not in_angle:
             if in_body:
-                print(c, end="")
+                text += c
         elif c != "\n":
             tag_name += c
+    text = text.replace("&lt;", "<")
+    text = text.replace("&gt;", ">")
+    text = text.replace("&quot;", "\"")
+    text = text.replace("&amp;", "&")
+    print(text)
 
 def show(body):
     if body.find("<html") != -1:
