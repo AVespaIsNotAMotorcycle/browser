@@ -69,12 +69,20 @@ def data_scheme(path):
 def parse_scheme_and_url(url):
     if url[:5] == "data:":
         return url[:4], url[5:]
+    if url[:11] == "view-source":
+        return url[:11], url[12:]
     scheme, url = url.split("://", 1)
     return scheme, url
 
+def view_source_scheme(url):
+    headers, body = request(url)
+    body = body.replace("<", "&lt;")
+    body = body.replace(">", "&gt;")
+    return headers, body
+
 def request(url):
     scheme, url = parse_scheme_and_url(url)
-    assert scheme in ["http", "https", "file", "data"], \
+    assert scheme in ["http", "https", "file", "data", "view-source"], \
         "Unknown scheme {}".format(scheme)
     host, path = url.split("/", 1)
     path = "/" + path
@@ -86,6 +94,15 @@ def request(url):
         return http_scheme(host, path)
     if scheme == "https":
         return https_scheme(host, path)
+    if scheme == "view-source":
+        return view_source_scheme(url)
+
+def remove_entities(text):
+    text = text.replace("&lt;", "<")
+    text = text.replace("&gt;", ">")
+    text = text.replace("&quot;", "\"")
+    text = text.replace("&amp;", "&")
+    return text
 
 def render_html(html):
     in_angle = False
@@ -107,17 +124,14 @@ def render_html(html):
                 text += c
         elif c != "\n":
             tag_name += c
-    text = text.replace("&lt;", "<")
-    text = text.replace("&gt;", ">")
-    text = text.replace("&quot;", "\"")
-    text = text.replace("&amp;", "&")
-    print(text)
+    text = remove_entities(text)
+    return text
 
 def show(body):
     if body.find("<html") != -1:
         print(render_html(body))
         return
-    print(body)
+    print(remove_entities(body))
 
 def load(url):
     headers, body = request(url)
