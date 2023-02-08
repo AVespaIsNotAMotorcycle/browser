@@ -1,25 +1,11 @@
-def request(url):
-    scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-    host, path = url.split("/", 1)
-    path = "/" + path
-    port = 80 if scheme == "http" else 443
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-   
-    import socket
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    import ssl
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
+def file_scheme(path):
+    import os
+    headers = {}
+    print(path)
+    body = open(path).read()
+    return headers, body
 
+def socket_connection(s, host, port, path):
     s.connect((host, port))
     s.send("GET {} HTTP/1.1\r\n".format(path).encode("utf8") +
            "Host: {}\r\n".format(host).encode("utf8") +
@@ -43,6 +29,49 @@ def request(url):
     body = response.read()
     s.close()
     return headers, body
+
+def http_scheme(host, path):
+    import socket
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    port = 80
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+    return socket_connection(s, host, port, path)
+
+def https_scheme(host, path):
+    port = 443
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+   
+    import socket
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    import ssl
+    ctx = ssl.create_default_context()
+    s = ctx.wrap_socket(s, server_hostname=host)
+    return socket_connection(s, host, port, path)
+
+def request(url):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https", "file"], \
+        "Unknown scheme {}".format(scheme)
+    host, path = url.split("/", 1)
+    path = "/" + path
+    if scheme == "file":
+        return file_scheme(path)
+    if scheme == "http":
+        return http_scheme(host, path)
+    if scheme == "https":
+        return https_scheme(host, path)
 
 def show(body):
   in_angle = False
