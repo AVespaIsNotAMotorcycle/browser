@@ -253,6 +253,8 @@ class Browser:
         self.window = tkinter.Tk()
         self.width = 800
         self.height = 600
+        self.fontsize = 32
+        self.font = tkinter.font.Font(size=self.fontsize)
         self.canvas = tkinter.Canvas(
             self.window,
             width=self.width,
@@ -266,6 +268,11 @@ class Browser:
         self.window.bind("<Button-4>", self.scrollup)
         self.window.bind("<MouseWheel>", self.scroll)
         self.window.bind("<Configure>", self.resize)
+        self.window.bind("<+>", self.zoom)
+
+    def zoom(self, e):
+        self.fontsize = self.fontsize * 2
+        self.font = tkinter.font.Font(size=self.fontsize)
 
     def scrolldown(self, e):
         event = {}
