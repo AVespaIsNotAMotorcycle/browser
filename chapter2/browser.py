@@ -279,7 +279,7 @@ class Browser:
         self.zoom(2)
 
     def zoom(self, factor):
-        if self.fontsize * factor < 5:
+        if self.fontsize * factor < 8:
             return
         self.fontsize = int(self.fontsize * factor)
         self.font = tkinter.font.Font(size=self.fontsize)
