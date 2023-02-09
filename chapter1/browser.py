@@ -1,3 +1,48 @@
+def page_cached(host, path):
+    import os
+    from datetime import datetime, timedelta
+    upath = path.replace("/", "_")
+    if not os.path.exists("cache"):
+        return False
+    if not os.path.exists("cache/" + host):
+        return False
+    indexpath = "cache/" + host + "/__index__.txt"
+    if not os.path.isfile(indexpath):
+        return False
+    index = open(indexpath, "r")
+    lines = index.readlines()
+    for line in lines:
+        if line[:len(upath)] != upath:
+            return False
+        datestr = line[len(upath) + 1:-1]
+        recdate = datetime.fromisoformat(datestr)
+        curdate = datetime.now()
+        if curdate < recdate:
+            return True
+        return False
+    return False
+
+def cache_page(host, path, body, duration):
+    import os
+    from datetime import datetime, timedelta
+    upath = path.replace("/", "_")
+    if not os.path.exists("cache"):
+        os.mkdir("cache")
+    if not os.path.exists("cache/" + host):
+        os.mkdir("cache/" + host)
+    indexpath = "cache/" + host + "/__index__.txt"
+    date = datetime.now() + timedelta(seconds=duration)
+    if not os.path.isfile(indexpath):
+        index = open(indexpath, "w")
+        index.close()
+    index = open(indexpath, "a")
+    index.write(upath + " " + date.isoformat() + "\n")
+    index.close()
+    page = open("cache/" + host + "/" + upath, "w")
+    page.write(body)
+    page.close
+    return False
+
 def file_scheme(path):
     import os
     headers = {}
@@ -5,6 +50,10 @@ def file_scheme(path):
     return headers, body
 
 def socket_connection(s, host, port, path, redirects = 0):
+    if page_cached(host, path):
+        import os
+        upath = path.replace("/", "_")
+        return file_scheme("cache/" + host + "/" + upath)
     if redirects > 5:
         return {}, "More than 5 redirects"
     s.connect((host, port))
@@ -64,6 +113,12 @@ def socket_connection(s, host, port, path, redirects = 0):
         import gzip
         body = gzip.decompress(body)
     body = body.decode("utf8")
+
+    if status == "200":
+        if "cache-control" in headers:
+            if headers["cache-control"][:8] == "max-age=":
+                duration = int(headers["cache-control"][8:])
+                cache_page(host, path, body, duration)
  
     s.close()
     return headers, body
