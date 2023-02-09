@@ -9,23 +9,57 @@ def socket_connection(s, host, port, path):
     s.send("GET {} HTTP/1.1\r\n".format(path).encode("utf8") +
            "Host: {}\r\n".format(host).encode("utf8") +
            "Connection: {}\r\n".format("close").encode("utf8") +
-           "User-Agent: {}\r\n\r\n".format("avinam").encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
-    statusline = response.readline()
+           "User-Agent: {}\r\n".format("avinam").encode("utf8") +
+           "Accept-Encoding: {}\r\n\r\n".format("gzip").encode("utf8"))
+    response = s.makefile("rb", newline="\r\n")
+    header_strs = []
+    body_bytes = []
+    in_body = False
+    for line in response:
+        if not in_body:
+            if (line.decode("utf8") == "\r\n"):
+                in_body = True
+            else:
+                header_strs.append(line.decode("utf8"))
+        else:
+            body_bytes.append(line)
+    statusline = header_strs[0]
+    header_strs = header_strs[1:]
     version, status, explanation = statusline.split(" ", 2)
     assert status == "200", "{}: {}".format(status, explanation)
 
     headers = {}
-    while True:
-        line = response.readline()
+    for line in header_strs:
         if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
-    
-    assert "transfer-encoding" not in headers
-    assert "content-encoding" not in headers
-    
-    body = response.read()
+   
+    body = b''.join(body_bytes)
+    if "transfer-encoding" in headers:
+        body = b''
+        in_chunk = False
+        chunk_full_len = 0
+        chunk_curr_len = 0
+        for chunk in body_bytes:
+            if chunk_curr_len >= chunk_full_len:
+                in_chunk = False
+            if not in_chunk:
+                if chunk[-2:] == b'\r\n':
+                    in_chunk = True
+                    chunk_full_len = int(chunk[:-2], 16)
+                    if chunk_full_len == 0:
+                        break
+            else:
+                body += chunk
+                chunk_curr_len += len(chunk)
+        #print("TRANSFER-ENCODING")
+        while body[-2:] == b'\r\n':
+            body = body[:-2]
+    if "content-encoding" in headers:
+        import gzip
+        body = gzip.decompress(body)
+    body = body.decode("utf8")
+ 
     s.close()
     return headers, body
 
