@@ -271,19 +271,39 @@ class Browser:
             height=HEIGHT
         )
         self.canvas.pack()
-        self.scroll = 0
+        self.scroll_amt = 0
         self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Button-5>", self.scrolldown)
+        self.window.bind("<Up>", self.scrollup)
+        self.window.bind("<Button-4>", self.scrollup)
+        self.window.bind("<MouseWheel>", self.scroll)
 
     def scrolldown(self, e):
-        self.scroll += SCROLL_STEP
+        event = {}
+        event["delta"] = 1
+        self.scroll(event)
+
+    def scrollup(self, e):
+        event = {}
+        event["delta"] = -1
+        self.scroll(event)
+
+    def scroll(self, e):
+        d = 0
+        if type(e) == dict:
+            d = e["delta"]
+        else:
+            d = e.delta
+        if self.scroll_amt > 0 or d > 0:
+            self.scroll_amt += SCROLL_STEP * d
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
-            if y > self.scroll + HEIGHT: continue
-            if y + VSTEP < self.scroll: continue
-            self.canvas.create_text(x, y - self.scroll, text=c)
+            if y > self.scroll_amt + HEIGHT: continue
+            if y + VSTEP < self.scroll_amt: continue
+            self.canvas.create_text(x, y - self.scroll_amt, text=c)
 
     def load(self, url):
         headers, body = request(url)
