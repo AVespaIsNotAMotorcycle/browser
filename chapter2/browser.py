@@ -245,7 +245,6 @@ def lex(body):
         text += c
     return text
 
-HSTEP, VSTEP = 13, 18
 SCROLL_STEP = 100
 
 class Browser:
@@ -253,7 +252,9 @@ class Browser:
         self.window = tkinter.Tk()
         self.width = 800
         self.height = 600
-        self.fontsize = 32
+        self.fontsize = 10
+        self.hstep = self.fontsize * 1.3
+        self.vstep = self.fontsize * 1.8
         self.font = tkinter.font.Font(size=self.fontsize)
         self.canvas = tkinter.Canvas(
             self.window,
@@ -268,11 +269,24 @@ class Browser:
         self.window.bind("<Button-4>", self.scrollup)
         self.window.bind("<MouseWheel>", self.scroll)
         self.window.bind("<Configure>", self.resize)
-        self.window.bind("<+>", self.zoom)
+        self.window.bind("<KP_Add>", self.zoomin)
+        self.window.bind("<KP_Subtract>", self.zoomout)
 
-    def zoom(self, e):
-        self.fontsize = self.fontsize * 2
+    def zoomout(self, e):
+        self.zoom(0.5)
+
+    def zoomin(self, e):
+        self.zoom(2)
+
+    def zoom(self, factor):
+        if self.fontsize * factor < 5:
+            return
+        self.fontsize = int(self.fontsize * factor)
         self.font = tkinter.font.Font(size=self.fontsize)
+        self.hstep = self.fontsize * 1.3
+        self.vstep = self.fontsize * 1.8
+        self.display_list = self.layout(self.text)
+        self.draw()
 
     def scrolldown(self, e):
         event = {}
@@ -296,24 +310,24 @@ class Browser:
 
     def layout(self, text):
         display_list = []
-        cursor_x, cursor_y = HSTEP, VSTEP
+        cursor_x, cursor_y = self.hstep, self.vstep
         for c in text:
             if c == "\n":
-                cursor_x = HSTEP
-                cursor_y += VSTEP
+                cursor_x = self.hstep
+                cursor_y += self.vstep
             display_list.append((cursor_x, cursor_y, c))
-            cursor_x += HSTEP
-            if cursor_x >= self.width - HSTEP:
-                cursor_y += VSTEP
-                cursor_x = HSTEP
+            cursor_x += self.hstep
+            if cursor_x >= self.width - self.hstep:
+                cursor_y += self.vstep
+                cursor_x = self.hstep
         return display_list
 
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
             if y > self.scroll_amt + self.height: continue
-            if y + VSTEP < self.scroll_amt: continue
-            self.canvas.create_text(x, y - self.scroll_amt, text=c)
+            if y + self.vstep < self.scroll_amt: continue
+            self.canvas.create_text(x, y - self.scroll_amt, text=c, font=self.font)
 
     def resize(self, e):
         self.width = e.width
@@ -330,5 +344,6 @@ class Browser:
 if __name__ == "__main__":
     import sys
     import tkinter
+    from tkinter import font
     Browser().load(sys.argv[1])
     tkinter.mainloop()
