@@ -4,7 +4,9 @@ def file_scheme(path):
     body = open(path).read()
     return headers, body
 
-def socket_connection(s, host, port, path):
+def socket_connection(s, host, port, path, redirects = 0):
+    if redirects > 5:
+        return {}, "More than 5 redirects"
     s.connect((host, port))
     s.send("GET {} HTTP/1.1\r\n".format(path).encode("utf8") +
            "Host: {}\r\n".format(host).encode("utf8") +
@@ -26,14 +28,18 @@ def socket_connection(s, host, port, path):
     statusline = header_strs[0]
     header_strs = header_strs[1:]
     version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
+    assert status in ["200", "301"], "{}: {}".format(status, explanation)
 
     headers = {}
     for line in header_strs:
         if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
-   
+    if status == "301":
+        if headers["location"][0] == "/":
+            return socket_connection(s, host, port, headers["location"], redirects + 1)
+        return request(headers["location"], redirects + 1)
+ 
     body = b''.join(body_bytes)
     if "transfer-encoding" in headers:
         body = b''
@@ -52,7 +58,6 @@ def socket_connection(s, host, port, path):
             else:
                 body += chunk
                 chunk_curr_len += len(chunk)
-        #print("TRANSFER-ENCODING")
         while body[-2:] == b'\r\n':
             body = body[:-2]
     if "content-encoding" in headers:
@@ -63,7 +68,7 @@ def socket_connection(s, host, port, path):
     s.close()
     return headers, body
 
-def http_scheme(host, path):
+def http_scheme(host, path, redirects = 0):
     import socket
     s = socket.socket(
         family=socket.AF_INET,
@@ -74,9 +79,9 @@ def http_scheme(host, path):
     if ":" in host:
         host, port = host.split(":", 1)
         port = int(port)
-    return socket_connection(s, host, port, path)
+    return socket_connection(s, host, port, path, redirects)
 
-def https_scheme(host, path):
+def https_scheme(host, path, redirects = 0):
     port = 443
     if ":" in host:
         host, port = host.split(":", 1)
@@ -91,7 +96,7 @@ def https_scheme(host, path):
     import ssl
     ctx = ssl.create_default_context()
     s = ctx.wrap_socket(s, server_hostname=host)
-    return socket_connection(s, host, port, path)
+    return socket_connection(s, host, port, path, redirects)
 
 def data_scheme(path):
     headers = {}
@@ -114,7 +119,7 @@ def view_source_scheme(url):
     body = body.replace(">", "&gt;")
     return headers, body
 
-def request(url):
+def request(url, redirects = 0):
     scheme, url = parse_scheme_and_url(url)
     assert scheme in ["http", "https", "file", "data", "view-source"], \
         "Unknown scheme {}".format(scheme)
@@ -125,9 +130,9 @@ def request(url):
     if scheme == "data":
         return data_scheme(path)
     if scheme == "http":
-        return http_scheme(host, path)
+        return http_scheme(host, path, redirects)
     if scheme == "https":
-        return https_scheme(host, path)
+        return https_scheme(host, path, redirects)
     if scheme == "view-source":
         return view_source_scheme(url)
 
